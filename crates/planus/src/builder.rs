@@ -276,6 +276,11 @@ impl Builder {
         self.as_slice()
     }
 
+    /// Returns the underlying data buffer.
+    pub fn into_backvec(self) -> BackVec {
+        self.inner
+    }
+
     /// Returns a reference to the current data buffer.
     ///
     /// It will return the same slice as the one return by [`finish`], unless additional data has been appened afterwards.

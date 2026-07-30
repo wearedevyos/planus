@@ -1,11 +1,13 @@
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
 #![cfg_attr(not(feature = "std"), no_std)]
-mod backvec;
 mod builder;
 mod impls;
 mod slice_helpers;
 mod traits;
+
+#[allow(missing_docs)]
+pub mod backvec;
 
 /// Error types for serialization/deserialization
 pub mod errors;
