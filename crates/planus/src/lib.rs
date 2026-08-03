@@ -37,6 +37,7 @@ pub use crate::{
     traits::*,
     union_vectors::UnionVector,
     vectors::Vector,
+    impls::array_from_buffer,
 };
 
 #[doc(hidden)]

@@ -15,7 +15,8 @@ mod union_vector_offset;
 mod unit;
 mod vec;
 
-pub(crate) fn array_from_buffer(
+/// Retrieve an array's location from a buffer with offset.
+pub fn array_from_buffer(
     buffer: crate::slice_helpers::SliceWithStartOffset<'_>,
     offset: usize,
 ) -> core::result::Result<
