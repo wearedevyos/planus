@@ -1440,6 +1440,7 @@ dependencies = [
  "heck",
  "planus-types",
  "random_color",
+ "sha2",
  "thiserror 2.0.20",
  "vec_map",
 ]

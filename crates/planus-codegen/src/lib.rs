@@ -26,15 +26,15 @@ pub fn generate_rust(declarations: &Declarations, format: bool) -> eyre::Result<
         declarations,
         &mut rust::analysis::InfallibleConversionAnalysis,
     );
-    let output = run_backend(
-        &mut RustBackend {
-            default_analysis,
-            eq_analysis,
-            infallible_analysis,
-        },
-        declarations,
-    );
-    let res = templates::rust::Namespace(&output).render().unwrap();
+    let mut backend = RustBackend {
+        default_analysis,
+        eq_analysis,
+        infallible_analysis,
+        rpc_services: Vec::new(),
+    };
+    let output = run_backend(&mut backend, declarations);
+    let mut res = templates::rust::Namespace(&output).render().unwrap();
+    res.push_str(&rust::rpc_services_enum(&backend.rpc_services)?);
     if format {
         let res = rust::format_string(&res, Some(1_000_000))?;
         let res = rust::format_string(&res, None)?;

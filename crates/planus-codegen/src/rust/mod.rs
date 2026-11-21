@@ -23,6 +23,127 @@ pub struct RustBackend {
     pub default_analysis: Vec<bool>,
     pub eq_analysis: Vec<bool>,
     pub infallible_analysis: Vec<bool>,
+    /// Every rpc service seen during generation, used to emit the global `RpcService` enum.
+    pub rpc_services: Vec<RpcServiceSummary>,
+}
+
+/// An rpc service as listed in the global `RpcService` enum.
+#[derive(Clone, Debug)]
+pub struct RpcServiceSummary {
+    /// The identifier of the enum variant: the service's name as declared in the schema.
+    pub variant_name: String,
+    /// The fully-qualified name of the service.
+    pub service_name: String,
+    /// The stable 16-byte id of the service.
+    pub id: u128,
+}
+
+/// The stable 16-byte id of a rpc service or method: the first 16 bytes of the SHA-256 of its
+/// fully-qualified name, read as a big-endian integer.
+///
+/// Ids depend only on names, so they do not change when other declarations are added, removed
+/// or reordered in the schema.
+fn stable_rpc_id(fully_qualified_name: &str) -> u128 {
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(fully_qualified_name.as_bytes());
+    u128::from_be_bytes(digest[..16].try_into().expect("SHA-256 digest is 32 bytes"))
+}
+
+fn rpc_id_literal(id: u128) -> String {
+    format!("0x{id:032x}_u128")
+}
+
+/// Renders the global `RpcService` enum listing every rpc service of the protocol.
+///
+/// Fails if two services share a name, since their variants would collide.
+pub fn rpc_services_enum(services: &[RpcServiceSummary]) -> eyre::Result<String> {
+    use std::fmt::Write;
+
+    let mut names = std::collections::HashSet::new();
+    for service in services {
+        if !names.insert(service.variant_name.as_str()) {
+            eyre::bail!(
+                "two rpc services are named `{}`; rpc service names must be unique across the protocol",
+                service.variant_name
+            );
+        }
+    }
+
+    if services.is_empty() {
+        // An enum without variants cannot carry a , and there is nothing to list.
+        return Ok(String::new());
+    }
+
+    let mut out = String::new();
+    let n = services.len();
+
+    out.push_str(
+        "/// Every rpc service of the protocol.\n\
+         ///\n\
+         /// The discriminant of each variant is the service's stable 16-byte id, see [`RpcService::id`].\n\
+         #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]\n\
+         #[repr(u128)]\n\
+         pub enum RpcService {\n",
+    );
+    for s in services {
+        writeln!(out, "    {} = {},", s.variant_name, rpc_id_literal(s.id)).unwrap();
+    }
+    out.push_str("}\n\n");
+
+    writeln!(out, "impl RpcService {{").unwrap();
+    writeln!(out, "    /// Every rpc service of the protocol.").unwrap();
+    writeln!(out, "    pub const ENUM_VALUES: [Self; {n}] = [").unwrap();
+    for s in services {
+        writeln!(out, "        Self::{},", s.variant_name).unwrap();
+    }
+    out.push_str("    ];\n\n");
+    out.push_str(
+        "    /// The stable 16-byte id of the service. Its big-endian bytes identify the service on the wire.\n\
+         #[inline]\n\
+         pub const fn id(self) -> u128 {\n\
+         \x20       self as u128\n\
+         \x20   }\n\n\
+         \x20   /// The fully-qualified name of the service in the flatbuffers schema.\n\
+         \x20   #[inline]\n\
+         \x20   pub const fn name(self) -> &'static str {\n\
+         \x20       match self {\n",
+    );
+    for s in services {
+        writeln!(out, "            Self::{} => \"{}\",", s.variant_name, s.service_name).unwrap();
+    }
+    out.push_str("        }\n    }\n}\n\n");
+
+    out.push_str(
+        "impl ::core::convert::TryFrom<u128> for RpcService {\n\
+         \x20   type Error = ::planus::errors::UnknownEnumTagKind;\n\
+         \x20   #[inline]\n\
+         \x20   fn try_from(value: u128) -> ::core::result::Result<Self, ::planus::errors::UnknownEnumTagKind> {\n\
+         \x20       #[allow(clippy::match_single_binding)]\n\
+         \x20       match value {\n",
+    );
+    for s in services {
+        writeln!(
+            out,
+            "            {} => ::core::result::Result::Ok(Self::{}),",
+            rpc_id_literal(s.id),
+            s.variant_name
+        )
+        .unwrap();
+    }
+    out.push_str(
+        "            _ => ::core::result::Result::Err(::planus::errors::UnknownEnumTagKind { tag: value as i128 }),\n\
+         \x20       }\n\
+         \x20   }\n\
+         }\n\n\
+         impl ::core::convert::From<RpcService> for u128 {\n\
+         \x20   #[inline]\n\
+         \x20   fn from(value: RpcService) -> Self {\n\
+         \x20       value.id()\n\
+         \x20   }\n\
+         }\n",
+    );
+
+    Ok(out)
 }
 
 #[derive(Clone, Debug)]
@@ -118,6 +239,8 @@ pub struct RpcService {
     pub method_enum_name: String,
     pub name_const: String,
     pub service_name: String,
+    /// The stable 16-byte id of the service, as a Rust integer literal.
+    pub id_literal: String,
 }
 
 #[derive(Clone, Debug)]
@@ -127,6 +250,8 @@ pub struct RpcMethod {
     pub argument_ref_type: String,
     pub return_owned_type: String,
     pub idempotent: bool,
+    /// The stable 16-byte id of the method, as a Rust integer literal.
+    pub id_literal: String,
 }
 
 const BINDING_KIND_TYPES: &str = "types";
@@ -393,13 +518,21 @@ impl Backend for RustBackend {
         _decl: &intermediate::RpcService,
     ) -> RpcService {
         let service_name = decl_name.to_string();
+        let id = stable_rpc_id(&service_name);
+        let variant_name = decl_name.0.last().unwrap().to_string();
         let decl_name = decl_name.0.last().unwrap();
+        self.rpc_services.push(RpcServiceSummary {
+            variant_name,
+            service_name: service_name.clone(),
+            id,
+        });
         RpcService {
             trait_name: reserve_type_name(decl_name, declaration_names),
             async_trait_name: reserve_type_name(&format!("{decl_name}Async"), declaration_names),
             method_enum_name: reserve_type_name(&format!("{decl_name}Method"), declaration_names),
             name_const: reserve_const_name(&format!("{decl_name}Name"), declaration_names),
             service_name,
+            id_literal: rpc_id_literal(id),
         }
     }
 
@@ -1075,13 +1208,14 @@ impl Backend for RustBackend {
     fn generate_rpc_method(
         &mut self,
         translation_context: &mut DeclarationTranslationContext<'_, '_, Self>,
-        _parent_info: &Self::RpcServiceInfo,
+        parent_info: &Self::RpcServiceInfo,
         _parent: &intermediate::RpcService,
         method_name: &str,
         method: &intermediate::RpcMethod,
         argument_type: ResolvedType<'_, Self>,
         return_type: ResolvedType<'_, Self>,
     ) -> RpcMethod {
+        let id = stable_rpc_id(&format!("{}.{method_name}", parent_info.service_name));
         let name = reserve_field_name(
             method_name,
             "name",
@@ -1111,6 +1245,7 @@ impl Backend for RustBackend {
             argument_ref_type,
             return_owned_type,
             idempotent: method.idempotent,
+            id_literal: rpc_id_literal(id),
         }
     }
 }

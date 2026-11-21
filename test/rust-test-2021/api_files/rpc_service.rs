@@ -50,16 +50,23 @@ assert_eq!(
     GreeterMethod::ENUM_VALUES,
     [GreeterMethod::SayHello, GreeterMethod::SayHelloAgain]
 );
-assert_eq!(GreeterMethod::SayHello.id(), 0);
-assert_eq!(GreeterMethod::SayHelloAgain.id(), 1);
+// Ids are the first 16 bytes of the SHA-256 of "<service>.<method>".
+assert_eq!(GreeterMethod::SERVICE_ID, 0x3f798d9602eb0b0b03b86a43429c18d3_u128);
+assert_eq!(GreeterMethod::SayHello.id(), 0xb707af5721448045972bb708f37df99c_u128);
+assert_eq!(GreeterMethod::SayHelloAgain.id(), 0x9fe54c0127420c0cb4c9898d8c212e8b_u128);
 assert_eq!(GreeterMethod::SayHello.name(), "SayHello");
 assert_eq!(GreeterMethod::SayHelloAgain.name(), "SayHelloAgain");
 assert_eq!(
-    GreeterMethod::try_from(0u32).unwrap(),
+    GreeterMethod::try_from(GreeterMethod::SayHello.id()).unwrap(),
     GreeterMethod::SayHello
 );
-assert_eq!(u32::from(GreeterMethod::SayHelloAgain), 1);
-assert!(GreeterMethod::try_from(2u32).is_err());
+assert_eq!(u128::from(GreeterMethod::SayHelloAgain), GreeterMethod::SayHelloAgain.id());
+assert!(GreeterMethod::try_from(0u128).is_err());
+
+assert_eq!(RpcService::ENUM_VALUES, [RpcService::Greeter]);
+assert_eq!(RpcService::Greeter.name(), "Greeter");
+assert_eq!(RpcService::Greeter.id(), GreeterMethod::SERVICE_ID);
+assert_eq!(RpcService::try_from(0x3f798d9602eb0b0b03b86a43429c18d3_u128).unwrap(), RpcService::Greeter);
 
 let mut builder = planus::Builder::new();
 let offset = HelloRequest::create(&mut builder, "Planus");
