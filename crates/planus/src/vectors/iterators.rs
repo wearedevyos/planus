@@ -6,11 +6,7 @@ use crate::VectorRead;
 fn div_ceil(lhs: usize, rhs: usize) -> usize {
     let d = lhs / rhs;
     let r = lhs % rhs;
-    if r > 0 && rhs > 0 {
-        d + 1
-    } else {
-        d
-    }
+    if r > 0 && rhs > 0 { d + 1 } else { d }
 }
 
 /// An iterator over the elements of a `Vector`.
@@ -383,7 +379,7 @@ impl<T> Clone for ChunksExact<'_, T> {
 impl<'buf, T: VectorRead<'buf>> ChunksExact<'buf, T> {
     #[inline]
     pub(crate) fn new(v: Vector<'buf, T>, chunk_size: NonZeroUsize) -> Self {
-        let len = v.len() / chunk_size.get() * chunk_size.get();
+        let len = v.len() / chunk_size * chunk_size.get();
         let (v, rem) = unsafe { v.split_at_unchecked(len) };
         Self { v, rem, chunk_size }
     }
