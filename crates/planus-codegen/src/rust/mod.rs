@@ -12,7 +12,7 @@ use planus_types::{
     ast::{FloatType, IntegerType},
     intermediate::{self, AbsolutePath, AssignMode, DeclarationIndex, Literal, TableFieldTagKind},
 };
-
+use crate::stable_rpc_id;
 use super::backend::{
     Backend, DeclarationNames, DeclarationTranslationContext, NamespaceNames, RelativeNamespace,
     ResolvedType,
@@ -36,17 +36,6 @@ pub struct RpcServiceSummary {
     pub service_name: String,
     /// The stable 16-byte id of the service.
     pub id: u128,
-}
-
-/// The stable 16-byte id of a rpc service or method: the first 16 bytes of the SHA-256 of its
-/// fully-qualified name, read as a big-endian integer.
-///
-/// Ids depend only on names, so they do not change when other declarations are added, removed
-/// or reordered in the schema.
-fn stable_rpc_id(fully_qualified_name: &str) -> u128 {
-    use sha2::{Digest, Sha256};
-    let digest = Sha256::digest(fully_qualified_name.as_bytes());
-    u128::from_be_bytes(digest[..16].try_into().expect("SHA-256 digest is 32 bytes"))
 }
 
 fn rpc_id_literal(id: u128) -> String {
