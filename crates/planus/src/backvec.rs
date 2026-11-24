@@ -128,6 +128,13 @@ impl Drop for BackVec {
     }
 }
 
+impl AsRef<[u8]> for BackVec {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        self.as_slice()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rand::RngExt;
