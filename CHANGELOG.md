@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Parse and preserve union variant metadata in the CST and formatter [#312](https://github.com/planus-org/planus/pull/312).
 - Add `--ignore-unknown-metadata` to allow generating code from schemas that include generator-specific attributes.
 - Allow keywords as identifiers like flatc [#313](https://github.com/planus-org/planus/pull/313)
+- Add support for fixed-size arrays of scalars in structs (e.g. `[uint8:16]`)
 
 - Add support for `rpc_service` declarations: each service generates transport-agnostic sync and async Rust traits with one method per (unary) rpc method, plus a method enum with stable numeric ids for routing/relaying messages
 

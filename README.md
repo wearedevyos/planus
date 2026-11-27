@@ -85,9 +85,8 @@ We support most of the base language, though some parts have not been tested in-
 Things we do not currently support:
 
 - `file_extension`, `file_identifier` and `root_type`
-- Fixed-size arrays
 - Streaming rpc methods (`rpc_service` is supported, but only with unary methods)
-- Any attribute besides `required`, `deprecated`, `id`, `force_align`, `idempotent` or `streaming`.
+- Any attribute besides `required`, `deprecated`, `id` or `force_align`.
 - Some of the more exotic literal values, like hexadecimal floats or unicode surrogate pair parsing.
 
 Things we will probably never support:
