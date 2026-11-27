@@ -49,13 +49,13 @@ pub fn generate_dot(declarations: &Declarations) -> String {
     templates::dot::Namespace(&output).render().unwrap()
 }
 
-/// The stable 16-byte id of a rpc service or method: the first 16 bytes of the SHA-256 of its
+/// The stable 8-byte id of a rpc service or method: the first 8 bytes of the SHA-256 of its
 /// fully-qualified name, read as a big-endian integer.
 ///
 /// Ids depend only on names, so they do not change when other declarations are added, removed
 /// or reordered in the schema.
-pub fn stable_rpc_id(fully_qualified_name: &str) -> u128 {
+pub fn stable_rpc_id(fully_qualified_name: &str) -> u64 {
     use sha2::{Digest, Sha256};
     let digest = Sha256::digest(fully_qualified_name.as_bytes());
-    u128::from_be_bytes(digest[..16].try_into().expect("SHA-256 digest is 32 bytes"))
+    u64::from_be_bytes(digest[..8].try_into().expect("SHA-256 digest is 32 bytes"))
 }

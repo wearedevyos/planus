@@ -34,12 +34,12 @@ pub struct RpcServiceSummary {
     pub variant_name: String,
     /// The fully-qualified name of the service.
     pub service_name: String,
-    /// The stable 16-byte id of the service.
-    pub id: u128,
+    /// The stable 8-byte id of the service.
+    pub id: u64,
 }
 
-fn rpc_id_literal(id: u128) -> String {
-    format!("0x{id:032x}_u128")
+fn rpc_id_literal(id: u64) -> String {
+    format!("0x{id:016x}_u64")
 }
 
 #[derive(Clone, Debug)]
@@ -135,7 +135,7 @@ pub struct RpcService {
     pub method_enum_name: String,
     pub name_const: String,
     pub service_name: String,
-    /// The stable 16-byte id of the service, as a Rust integer literal.
+    /// The stable 8-byte id of the service, as a Rust integer literal.
     pub id_literal: String,
 }
 
@@ -146,7 +146,7 @@ pub struct RpcMethod {
     pub argument_ref_type: String,
     pub return_owned_type: String,
     pub idempotent: bool,
-    /// The stable 16-byte id of the method, as a Rust integer literal.
+    /// The stable 8-byte id of the method, as a Rust integer literal.
     pub id_literal: String,
 }
 

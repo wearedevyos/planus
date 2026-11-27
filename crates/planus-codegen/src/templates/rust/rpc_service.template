@@ -60,11 +60,11 @@ pub trait {{ info.async_trait_name }} {
 
 /// The methods of the rpc service `{{ info.service_name }}`.
 ///
-/// Each method has a stable 16-byte id, derived from the fully-qualified
+/// Each method has a stable 8-byte id, derived from the fully-qualified
 /// name of the method. The id identifies the method on the wire.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, ::serde::Serialize, ::serde::Deserialize)]
 {%- if !methods.is_empty() -%}
-#[repr(u128)]
+#[repr(u64)]
 {%- endif -%}
 pub enum {{ info.method_enum_name }} {
     {% for method in methods -%}
@@ -79,17 +79,17 @@ impl {{ info.method_enum_name }} {
     /// The fully-qualified name of the service in the flatbuffers schema
     pub const SERVICE_NAME: &'static str = {{ info.name_const }};
 
-    /// The stable 16-byte id of the service
-    pub const SERVICE_ID: u128 = {{ info.id_literal }};
+    /// The stable 8-byte id of the service
+    pub const SERVICE_ID: u64 = {{ info.id_literal }};
 
     /// Array containing all methods of the service
     pub const ENUM_VALUES: [Self; {{ methods.len() }}] = [
         {%- for method in methods -%} Self::{{ method.variant_name }}, {%- endfor -%}
     ];
 
-    /// The stable 16-byte id of the method. Its big-endian bytes identify the method on the wire.
+    /// The stable 8-byte id of the method. Its big-endian bytes identify the method on the wire.
     #[inline]
-    pub fn id(self) -> u128 {
+    pub fn id(self) -> u64 {
         match self {
             {% for method in methods -%}
                 Self::{{ method.variant_name }} => {{ method.id_literal }},
@@ -108,10 +108,10 @@ impl {{ info.method_enum_name }} {
     }
 }
 
-impl ::core::convert::TryFrom<u128> for {{ info.method_enum_name }} {
+impl ::core::convert::TryFrom<u64> for {{ info.method_enum_name }} {
     type Error = ::planus::errors::UnknownEnumTagKind;
     #[inline]
-    fn try_from(value: u128) -> ::core::result::Result<Self, ::planus::errors::UnknownEnumTagKind> {
+    fn try_from(value: u64) -> ::core::result::Result<Self, ::planus::errors::UnknownEnumTagKind> {
         #[allow(clippy::match_single_binding)]
         match value {
             {% for method in methods -%}
@@ -123,7 +123,7 @@ impl ::core::convert::TryFrom<u128> for {{ info.method_enum_name }} {
     }
 }
 
-impl ::core::convert::From<{{ info.method_enum_name }}> for u128 {
+impl ::core::convert::From<{{ info.method_enum_name }}> for u64 {
     #[inline]
     fn from(value: {{ info.method_enum_name }}) -> Self {
         value.id()
