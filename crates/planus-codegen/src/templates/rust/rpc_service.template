@@ -54,7 +54,7 @@ pub trait {{ info.async_trait_name }} {
     ///
     /// This method is marked as `idempotent` in the flatbuffers schema.
     {%- endif %}
-    async fn {{ method.name }}(&self, request: {{ method.argument_ref_type }}) -> ::core::result::Result<{{ method.return_owned_type }}, Self::Error>;
+    fn {{ method.name }}(&self, request: {{ method.argument_ref_type }}) -> impl ::core::future::Future<Output = ::core::result::Result<{{ method.return_owned_type }}, Self::Error>> + ::core::marker::Send;
     {% endfor %}
 }
 
